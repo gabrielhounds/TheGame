@@ -12,11 +12,13 @@ body {
 
 main {
 	position: absolute;
-	width: 960px;
-	height: 480px;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	background-color: aqua;
+	//width: 960px;
+	//height: 480px;
+	width: 100vw;
+	height:100vh;
+	//left: 50%;
+	//top: 50%;
+	//transform: translate(-50%, -50%);
+	background-color: black;
 }
 
