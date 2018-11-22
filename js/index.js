@@ -11,22 +11,63 @@ function init() {
 	Sprite 			= PIXI.Sprite;
 	var ticker 			= new PIXI.ticker.Ticker({ autoStart : false});
 	var t = TweenMax;
+	var Utils = {};
 	var app,
 		loadingText,
-		ghost,
+		livesText,
 		ground,
 		derpHolder,
 		derpTextures,
-		blob,
+		item,
+		enemy,
 		derp,
+		score = 0,
+		lives = 3,
 		keyCount = 0,
-		groundMoveRate = 4.0;
+		backCount = 0,
+		groundMoveRate = 4.0,
+		itemMoveRate = 5.0;
 	//var mainWidth 	= $(main).width();
 	//var mainHeight 	= $(main).height();
 	var stageW 	= window.innerWidth;
 	var stageH 	= window.innerHeight;
 	var moving = false;
 	var jumping = false;
+
+	Utils = (function(){
+		var getMousePosition = function() {
+			return app.renderer.plugins.interaction.mouse.global;
+		}
+		var random = function(min, max) {
+			if (max == null) { max = min; min = 0; }
+			return Math.round(Math.random() * (max - min) + min);
+		}
+		return {
+			random : random,
+			getMousePosition : getMousePosition
+		}
+
+	}());
+
+	function handleScore() {
+		score += 1;
+		log('SCORE = ' + score);
+	}
+
+	function handleLifeLost() {
+		lives -= 1;
+		log('LIFE LOST. LIVES = ' + lives);
+
+		if (lives === 2) {
+			livesText.text = 'LIVES X X   ';
+		} else if (lives === 1) {
+			livesText.text = 'LIVES X     ';
+		} else if (lives === 0) {
+			livesText.text = 'GAME OVER   ';
+			alert('game over');
+		}
+
+	}
 
 	function bgScroll(delta) {
 		if (moving) {
@@ -36,24 +77,51 @@ function init() {
 		}
 	}
 
-	function handleBlobs(delta) {
+	function handleItems(delta) {
 		if (moving) {
-			blob.rotation -= 0.05 * delta;
-			if (blob.position.x > -blob.width / 2) {
-				blob.position.x -= 5;
+			item.rotation -= 0.05 * delta;
+			if (item.position.x > -item.width / 2) {
+				item.position.x -= itemMoveRate;
 			} else {
-				blob.position.x = stageW;
+				//item.position.x = stageW;
+				item.position.set(stageW, Utils.random(0, stageH));
 			}
 		}
 	}
+
+	function handleEnemies(delta) {
+		if (moving) {
+			enemy.rotation -= 0.05 * delta;
+			if (enemy.position.x > -item.width / 2) {
+				enemy.position.x -= itemMoveRate;
+			} else {
+				//item.position.x = stageW;
+				enemy.position.set(stageW, Utils.random(stageH /2, stageH));
+			}
+		}
+	}
+
 	function handleCollision(delta) {
-		//if (blob.x - blob.width / 2 < derp.x + derp.width / 2 &&  blob.x + blob.width / 2 > derp.x - derp.width / 2 ) {
-		if (blob.x - blob.width / 2 < derp.x  &&  blob.x + blob.width / 2 > derp.x ) {
+		//if (item.x - item.width / 2 < derp.x + derp.width / 2 &&  item.x + item.width / 2 > derp.x - derp.width / 2 ) {
+		if (item.x - item.width / 2 < derp.x  &&  item.x + item.width / 2 > derp.x ) {
 			//log('left of derp');
 			//ticker.stop();
-			if (blob.y < derp.y + derp.height / 2  && blob.y > derp.y - derp.height / 2  ) {
+			if (item.y < derp.y + derp.height / 2  && item.y > derp.y - derp.height / 2  ) {
 				//log('collision');
-				blob.position.x = stageW;
+				//item.position.x = stageW;
+				handleScore();
+				item.position.set(stageW, Utils.random(stageH /2, stageH));
+			}
+		}
+
+		if (enemy.x -  enemy.width / 2 < derp.x  &&  enemy.x + enemy.width / 2 > derp.x ) {
+			//log('left of derp');
+			//ticker.stop();
+			if (enemy.y < derp.y + derp.height / 2  && enemy.y > derp.y - derp.height / 2  ) {
+				//log('collision');
+				//item.position.x = stageW;
+				handleLifeLost();
+				enemy.position.set(stageW, Utils.random(stageH /2, stageH));
 			}
 		}
 	}
@@ -66,9 +134,15 @@ function init() {
 	            log('move right');
 	            derp.play();
 	            moving = true;
-	            keyCount += 0.1;
-	            groundMoveRate += keyCount;
-	            log(groundMoveRate);
+
+	            if (groundMoveRate < 12) {
+		            keyCount += 0.1;
+		            groundMoveRate += keyCount;
+					itemMoveRate += keyCount;
+					log(groundMoveRate);
+	            }
+
+
 	        }
 	        if (key.keyCode === 87 || key.keyCode === 38) {
             	// If the W key or the Up arrow is pressed, move the player up.
@@ -76,12 +150,29 @@ function init() {
             	//derp.stop();
             	if (!jumping) {
 	            	jumping = true;
-					t.to(derp, 1, {physics2D:{velocity:1100, angle:-90, gravity:2200}, onComplete:function() {log('jump done'); jumping = false;} });
+
+					//t.to(derp, 1, {physics2D:{velocity:1100, angle:-90, gravity:2200}, onComplete:function() {log('jump done'); jumping = false;} });
+
+					t.to(derp, 1, {physics2D:{velocity:2000, angle:-90, gravity:4000}, onComplete:function() {log('jump done'); jumping = false;} });
             	}
         	}
         	if (key.keyCode === 65 || key.keyCode === 37) {
             	// If the A key or the Left arrow is pressed, move the player to the left.
+
+            	if (groundMoveRate > 4) {
+	            	backCount += 0.1;
+		            groundMoveRate -= backCount;
+					itemMoveRate -= backCount;
+					log(groundMoveRate);
+	            }
         	}
+
+        	if (key.keyCode === 83 || key.keyCode === 40) {
+            	// If the S key or the Down arrow is pressed, move the player down.
+            	log('down');
+            	t.set(derp, {pixi:{scaleY:0.5}});
+        	}
+
 		}
 		function onKeyUp(key) {
 			if (key.keyCode === 68 || key.keyCode === 39) {
@@ -91,6 +182,13 @@ function init() {
 	            //moving = false;
 	            //derp.gotoAndStop(10);
 	        }
+
+	        if (key.keyCode === 83 || key.keyCode === 40) {
+            	// If the S key or the Down arrow is pressed, move the player down.
+            	log('down');
+            	t.set(derp, {pixi:{scaleY:1.0}});
+        	}
+
 		}
 	}
 	function setUpGame() {
@@ -100,23 +198,44 @@ function init() {
 		handleMove();
 	}
 	function setPosition() {
+		log('set position');
 		ground.position.set(0, stageH - ground.height);
-		derp.position.set(derp.width / 2, stageH - derp.height / 3.5);
-		blob.position.set(stageW + blob.width / 2, stageH / 2);
+
+		derp.position.set(derp.width / 2, stageH  - derp.height / 9);
+
+		livesText.position.set(10, 10);
+
+		item.position.set(stageW + item.width / 2, stageH / 2);
+
+		enemy.position.set(stageW + enemy.width / 2, Utils.random(stageH /2, stageH));
+
+
+
+
 		setUpGame();
 	}
 	function setUp() {
 		log('setup');
-		blob = new PIXI.Sprite(resources['images/blob.png'].texture);
-		blob.anchor.set(0.5);
-		blob.scale.set(0.5);
-		//app.stage.addChild(ghost);
+
+		item = new PIXI.Sprite(resources['images/item.png'].texture);
+		item.anchor.set(0.5);
+		item.scale.set(0.5);
+
+		enemy = new PIXI.Sprite(resources['images/enemy.png'].texture);
+		enemy.anchor.set(0.5);
+		enemy.scale.set(0.5);
+
 		ground = new PIXI.extras.TilingSprite(resources['images/ground.png'].texture, stageW, 31);
+
 		app.stage.addChild(ground);
-		app.stage.addChild(blob);
+		app.stage.addChild(item);
+		app.stage.addChild(enemy);
+
 		derpTextures = [resources['images/w_00.png'].texture, resources['images/w_01.png'].texture, resources['images/w_02.png'].texture, resources['images/w_03.png'].texture, resources['images/w_04.png'].texture, resources['images/w_05.png'].texture, resources['images/w_06.png'].texture, resources['images/w_07.png'].texture, resources['images/w_08.png'].texture, resources['images/w_09.png'].texture, resources['images/w_10.png'].texture, resources['images/w_11.png'].texture, resources['images/w_12.png'].texture, resources['images/w_13.png'].texture, resources['images/w_14.png'].texture, resources['images/w_15.png'].texture, resources['images/w_16.png'].texture, resources['images/w_17.png'].texture];
 		derp = new PIXI.extras.AnimatedSprite(derpTextures);
-		derp.anchor.set(0.5);
+		//derp.anchor.set(0.5);
+		derp.anchor.set(0.5, 0.7);
+
 		derp.animationSpeed = 0.5;
 		app.stage.addChild(derp);
 		setPosition();
@@ -128,9 +247,9 @@ function init() {
 			loadingText.position.set(stageW / 2 - loadingText.width / 2, stageH / 2);
 		}
 		loader.add([
-			'images/ghost.png',
 			'images/ground.png',
-			'images/blob.png',
+			'images/item.png',
+			'images/enemy.png',
 			'images/w_00.png',
 			'images/w_01.png',
 			'images/w_02.png',
@@ -158,17 +277,25 @@ function init() {
 		$(app.view).appendTo(main);
 		loadingText = new PIXI.Text('LOADING    ', {fontFamily : 'VT323, monospace', fontSize: 30, fill : 0x000000, align : 'center'});
 		loadingText.position.set(stageW / 2 - loadingText.width / 2, stageH / 2);
+
+		livesText = new PIXI.Text('LIVES X X X ', {fontFamily : 'VT323, monospace', fontSize: 30, fill : 0x000000, align : 'center'});
+		app.stage.addChild(livesText);
+
 		app.stage.addChild(loadingText);
 		initLoader();
 	}
 	ticker.add( function(delta){
 		//log('ticker');
 		//handleMove();
+
 		bgScroll(delta);
-		handleBlobs(delta);
+		handleItems(delta);
+		handleEnemies(delta);
 		handleCollision(delta);
 	});
+
 	initStage();
+
 	$( window ).resize(function() {
 		log('window resize');
 		//var w = window.innerWidth;
@@ -178,7 +305,7 @@ function init() {
 		app.renderer.resize(stageW, stageH);
 		ground.width = stageW;
 		ground.position.set(0, stageH - ground.height);
-		derp.position.set(derp.width / 2, stageH - derp.height / 3.5);
+		derp.position.set(derp.width / 2, stageH  - derp.height / 9);
 	});
 }
 //
